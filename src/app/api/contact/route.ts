@@ -1,63 +1,75 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+export const runtime = "nodejs";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+const CONTACT_TO = process.env.CONTACT_TO_EMAIL || "aaen.eiendom@hotmail.com";
+const CONTACT_FROM = process.env.CONTACT_FROM_EMAIL;
 
 export async function POST(request: Request) {
   try {
     const data = await request.json();
 
     const {
-      fullName,
+      name,
       phone,
       email,
       address,
       projectType,
-      startTime,
+      start,
       budget,
-      description,
-      befaring,
-    } = data;
+      message,
+      wantsVisit,
+      companyWebsite,
+    } = data ?? {};
 
-    if (!fullName || !phone || !email || !projectType || !startTime || !budget || !description) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    if (companyWebsite) {
+      return NextResponse.json({ ok: true });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT || 587) === 465,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    if (!name || !phone || !email || !projectType || !message) {
+      return NextResponse.json({ ok: false, error: "Missing fields" }, { status: 400 });
+    }
 
-    const body = `
-Ny forespørsel fra nettsiden
-----------------------------
-Navn: ${fullName}
-Telefon: ${phone}
-E-post: ${email}
-Adresse/område: ${address || "-"}
-Type prosjekt: ${projectType}
-Estimert oppstart: ${startTime}
-Budsjettintervall: ${budget}
-Ønsker gratis befaring: ${befaring ? "Ja" : "Nei"}
+    if (!CONTACT_FROM) {
+      console.error("Missing CONTACT_FROM_EMAIL env var");
+      return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
+    }
 
-Beskrivelse:
-${description}
-`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;">
+        <h2>Ny forespørsel – AAEN Eiendom</h2>
+        <p><strong>Navn:</strong> ${name}</p>
+        <p><strong>Telefon:</strong> ${phone}</p>
+        <p><strong>E-post:</strong> ${email}</p>
+        <p><strong>Adresse/område:</strong> ${address || "Ikke oppgitt"}</p>
+        <p><strong>Type prosjekt:</strong> ${projectType}</p>
+        <p><strong>Estimert oppstart:</strong> ${start || "Ikke oppgitt"}</p>
+        <p><strong>Budsjett:</strong> ${budget || "Ikke oppgitt"}</p>
+        <p><strong>Ønsker befaring:</strong> ${wantsVisit ? "Ja" : "Nei"}</p>
+        <hr />
+        <p><strong>Beskrivelse:</strong></p>
+        <p>${message.replace(/\n/g, "<br />")}</p>
+      </div>
+    `;
 
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: "aaen.eiendom@hotmail.com",
-      replyTo: email,
+    const result = await resend.emails.send({
+      from: CONTACT_FROM,
+      to: CONTACT_TO,
+      reply_to: email,
       subject: `Ny forespørsel – AAEN Eiendom: ${projectType}`,
-      text: body,
+      html,
     });
+
+    if (result.error) {
+      console.error("Resend error", result.error);
+      return NextResponse.json({ ok: false, error: "Email send failed" }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Contact form error", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
   }
 }

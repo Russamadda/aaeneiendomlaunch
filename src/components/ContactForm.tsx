@@ -4,15 +4,16 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 type FormValues = {
-  fullName: string;
+  name: string;
   phone: string;
   email: string;
   address?: string;
   projectType: string;
-  startTime: string;
-  budget: string;
-  description: string;
-  befaring: boolean;
+  start?: string;
+  budget?: string;
+  message: string;
+  wantsVisit: boolean;
+  companyWebsite?: string;
 };
 
 const projectTypes = [
@@ -35,7 +36,8 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     defaultValues: {
-      befaring: true,
+      wantsVisit: true,
+      companyWebsite: "",
     },
   });
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -50,7 +52,7 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
       });
       if (!res.ok) throw new Error("Request failed");
       setStatus("success");
-      reset({ befaring: true });
+      reset({ wantsVisit: true, companyWebsite: "" });
     } catch (e) {
       setStatus("error");
     }
@@ -69,10 +71,10 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Fullt navn *" error={errors.fullName?.message}>
+        <Field label="Fullt navn *" error={errors.name?.message}>
           <input
             type="text"
-            {...register("fullName", { required: "Fullt navn er påkrevd" })}
+            {...register("name", { required: "Fullt navn er påkrevd" })}
             className="input"
             placeholder="Ditt navn"
           />
@@ -117,9 +119,9 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
             ))}
           </select>
         </Field>
-        <Field label="Estimert oppstart" error={errors.startTime?.message}>
+        <Field label="Estimert oppstart">
           <select
-            {...register("startTime", { required: "Velg estimert oppstart" })}
+            {...register("start")}
             className="input"
             defaultValue=""
           >
@@ -133,9 +135,9 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
             ))}
           </select>
         </Field>
-        <Field label="Budsjettintervall" error={errors.budget?.message}>
+        <Field label="Budsjettintervall">
           <select
-            {...register("budget", { required: "Velg budsjett" })}
+            {...register("budget")}
             className="input"
             defaultValue=""
           >
@@ -151,9 +153,9 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
         </Field>
       </div>
 
-      <Field label="Beskrivelse av jobben *" error={errors.description?.message}>
+      <Field label="Beskrivelse av jobben *" error={errors.message?.message}>
         <textarea
-          {...register("description", { required: "Beskrivelse er påkrevd" })}
+          {...register("message", { required: "Beskrivelse er påkrevd" })}
           className="input min-h-[120px]"
           placeholder="Kort om omfang, materialer, tidspunkter og andre behov"
         />
@@ -163,10 +165,19 @@ export const ContactForm = ({ compact = false }: { compact?: boolean }) => {
         <input
           type="checkbox"
           className="mt-1 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
-          {...register("befaring")}
+          {...register("wantsVisit")}
         />
         <span>Ønsker gratis og uforpliktende befaring</span>
       </label>
+
+      {/* Honeypot field for spam bots */}
+      <input
+        type="text"
+        tabIndex={-1}
+        autoComplete="off"
+        className="hidden"
+        {...register("companyWebsite")}
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
