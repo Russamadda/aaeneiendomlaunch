@@ -3,10 +3,6 @@ import { Resend } from "resend";
 
 export const runtime = "nodejs";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const CONTACT_TO = process.env.CONTACT_TO_EMAIL || "aaen.eiendom@hotmail.com";
-const CONTACT_FROM = process.env.CONTACT_FROM_EMAIL;
-
 export async function POST(request: Request) {
   try {
     const data = await request.json();
@@ -24,7 +20,6 @@ export async function POST(request: Request) {
       companyWebsite,
     } = data ?? {};
 
-    // Honeypot: silent success
     if (companyWebsite) {
       return NextResponse.json({ ok: true });
     }
@@ -33,12 +28,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Missing fields" }, { status: 400 });
     }
 
-    if (!CONTACT_FROM) {
-      console.error("Missing CONTACT_FROM_EMAIL env var");
-      return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    const CONTACT_FROM = process.env.CONTACT_FROM_EMAIL;
+    const CONTACT_TO = process.env.CONTACT_TO_EMAIL || "aaen.eiendom@hotmail.com";
+
+    if (!RESEND_API_KEY || !CONTACT_FROM) {
+      return NextResponse.json({ ok: false, error: "Email not configured" }, { status: 503 });
     }
 
+    const resend = new Resend(RESEND_API_KEY);
     const wantsVisitLabel = wantsVisit ? "Ja" : "Nei";
+
     const text = `Ny forespørsel – AAEN Eiendom
 ----------------------------------
 Navn: ${name}
