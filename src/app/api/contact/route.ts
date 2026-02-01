@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       companyWebsite,
     } = data ?? {};
 
+    // Honeypot: silent success
     if (companyWebsite) {
       return NextResponse.json({ ok: true });
     }
@@ -37,6 +38,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
     }
 
+    const wantsVisitLabel = wantsVisit ? "Ja" : "Nei";
+    const text = `Ny forespørsel – AAEN Eiendom
+----------------------------------
+Navn: ${name}
+Telefon: ${phone}
+E-post: ${email}
+Adresse/område: ${address || "Ikke oppgitt"}
+Type prosjekt: ${projectType}
+Estimert oppstart: ${start || "Ikke oppgitt"}
+Budsjett: ${budget || "Ikke oppgitt"}
+Ønsker befaring: ${wantsVisitLabel}
+
+Beskrivelse:
+${message}`;
+
     const html = `
       <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;">
         <h2>Ny forespørsel – AAEN Eiendom</h2>
@@ -47,7 +63,7 @@ export async function POST(request: Request) {
         <p><strong>Type prosjekt:</strong> ${projectType}</p>
         <p><strong>Estimert oppstart:</strong> ${start || "Ikke oppgitt"}</p>
         <p><strong>Budsjett:</strong> ${budget || "Ikke oppgitt"}</p>
-        <p><strong>Ønsker befaring:</strong> ${wantsVisit ? "Ja" : "Nei"}</p>
+        <p><strong>Ønsker befaring:</strong> ${wantsVisitLabel}</p>
         <hr />
         <p><strong>Beskrivelse:</strong></p>
         <p>${message.replace(/\n/g, "<br />")}</p>
@@ -59,6 +75,7 @@ export async function POST(request: Request) {
       to: CONTACT_TO,
       reply_to: email,
       subject: `Ny forespørsel – AAEN Eiendom: ${projectType}`,
+      text,
       html,
     });
 
